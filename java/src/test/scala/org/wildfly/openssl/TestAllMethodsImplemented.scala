@@ -37,48 +37,48 @@ import org.junit.internal.matchers.StringContains;
  *
  * @author Stuart Douglas
  */
-public class TestAllMethodsImplemented extends AbstractOpenSSLTest  {
+class TestAllMethodsImplemented extends AbstractOpenSSLTest  {
 
     // @Test
-    public void testAllMethodsImplemented() throws IOException {
+    // public void testAllMethodsImplemented() throws IOException {
 
-        Set<String> implemented = new HashSet<>();
-        Pattern pattern = Pattern.compile("WF_OPENSSL\\([^,]*,([^\\)]*)");
-        File path = new File("target/libwfssl" + File.separator + "src");
-        for(String i : path.list()) {
-            String file = read(new File(path, i));
-            Matcher matcher = pattern.matcher(file);
-            while (matcher.find()) {
-                implemented.add(matcher.toMatchResult().group(1).trim() + "0");
-            }
-        }
-        Set<String> notImplemented = new HashSet<>();
-        for(Method m : SSLImpl.class.getDeclaredMethods()) {
-            if(Modifier.isNative(m.getModifiers())) {
-                if(!implemented.remove(m.getName())) {
-                    notImplemented.add(m.getName());
-                }
-            }
-        }
-        if(!notImplemented.isEmpty()) {
-            throw new RuntimeException("Not implemented " + notImplemented);
-        }
-        if(!implemented.isEmpty()) {
-            throw new RuntimeException("Not needed " + implemented);
-        }
-    }
+    //     Set<String> implemented = new HashSet<>();
+    //     Pattern pattern = Pattern.compile("WF_OPENSSL\\([^,]*,([^\\)]*)");
+    //     File path = new File("target/libwfssl" + File.separator + "src");
+    //     for(String i : path.list()) {
+    //         String file = read(new File(path, i));
+    //         Matcher matcher = pattern.matcher(file);
+    //         while (matcher.find()) {
+    //             implemented.add(matcher.toMatchResult().group(1).trim() + "0");
+    //         }
+    //     }
+    //     Set<String> notImplemented = new HashSet<>();
+    //     for(Method m : SSLImpl.class.getDeclaredMethods()) {
+    //         if(Modifier.isNative(m.getModifiers())) {
+    //             if(!implemented.remove(m.getName())) {
+    //                 notImplemented.add(m.getName());
+    //             }
+    //         }
+    //     }
+    //     if(!notImplemented.isEmpty()) {
+    //         throw new RuntimeException("Not implemented " + notImplemented);
+    //     }
+    //     if(!implemented.isEmpty()) {
+    //         throw new RuntimeException("Not needed " + implemented);
+    //     }
+    // }
 
-    @Test(expected = RuntimeException.class)
-    public void testOpenSSLMessagesAreIncluded() throws Exception {
-        SSL ssl = null;
-        long ctx = 0;
+    @Test(expected = classOf[RuntimeException])
+    def testOpenSSLMessagesAreIncluded(): Unit = {
+        var ssl: SSL = null;
+        var ctx = 0L;
         try {
             ssl = SSL.getInstance();
-            ctx = ssl.makeSSLContext(SSLImpl.SSL_PROTOCOL_SSLV2, SSL.SSL_MODE_CLIENT);
+            ctx = ssl.makeSSLContext(SSL.SSL_PROTOCOL_SSLV2, SSL.SSL_MODE_CLIENT);
             ssl.setCipherSuite(ctx, "invalid-cypher");
-        } catch (RuntimeException e) {
+        } catch { case e: RuntimeException =>
             // check the root cause has the OpenSSL stack-trace message
-            Throwable rootCause = e;
+            var rootCause: Throwable = e;
             while (rootCause.getCause() != null) {
                 rootCause = rootCause.getCause();
             }
@@ -91,14 +91,17 @@ public class TestAllMethodsImplemented extends AbstractOpenSSLTest  {
         }
     }
 
-    private String read(File file) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[100];
-        try (FileInputStream in = new FileInputStream(file)) {
-            int r;
-            while ((r = in.read(buf)) > 0) {
+    private def read(file: File): String = {
+        val out = new ByteArrayOutputStream();
+        val buf = new Array[Byte](100);
+        val in = new FileInputStream(file)
+        try {
+            var r = 0;
+            while ({r = in.read(buf); r > 0}) {
                 out.write(buf, 0, r);
             }
+        } finally {
+            in.close()
         }
         return new String(out.toByteArray());
     }
