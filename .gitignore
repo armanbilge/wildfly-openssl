@@ -18,5 +18,8 @@ hotspot.log
 *.dylib
 *.a
 
+.bsp
+.metals
+.vscode
 
 
