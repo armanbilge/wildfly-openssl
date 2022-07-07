@@ -17,7 +17,7 @@
 
 package org.wildfly.openssl;
 
-import static org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
+import org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -33,44 +33,45 @@ import org.junit.Test;
 /**
  * @author Stuart Douglas
  */
-public class ALPNTest extends AbstractOpenSSLTest {
+class ALPNTest extends AbstractOpenSSLTest {
 
-    public static final String MESSAGE = "Hello World";
+    final val MESSAGE = "Hello World";
 
     @Test
-    public void testALPN() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def testALPN() = {
         Assume.assumeTrue(OpenSSLEngine.isAlpnSupported());
         testALPNBase("TLSv1.2");
     }
 
     @Test
-    public void testALPNTLS13() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def testALPNTLS13() = {
         Assume.assumeTrue(OpenSSLEngine.isAlpnSupported());
         Assume.assumeTrue(isTLS13Supported());
         testALPNBase("TLSv1.3");
     }
 
-    private void testALPNBase(String protocol) throws IOException, NoSuchAlgorithmException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl." + protocol);
-            final AtomicReference<OpenSSLEngine> engineAtomicReference = new AtomicReference<>();
-            Thread acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
-                OpenSSLEngine openSSLEngine = (OpenSSLEngine) engine;
+    private def testALPNBase(protocol: String) = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext("openssl." + protocol);
+            val engineAtomicReference = new AtomicReference[OpenSSLEngine]();
+            val acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
+                val openSSLEngine = engine.asInstanceOf[OpenSSLEngine];
                 openSSLEngine.setApplicationProtocols("h2", "h2/13", "http");
                 engineAtomicReference.set(openSSLEngine);
-                return openSSLEngine;
+                openSSLEngine;
             })));
             acceptThread.start();
 
-            final SSLContext clientSslContext = SSLTestUtils.createClientSSLContext("openssl." + protocol);
-            final OpenSSLSocket socket = (OpenSSLSocket) clientSslContext.getSocketFactory().createSocket();
+            val clientSslContext = SSLTestUtils.createClientSSLContext("openssl." + protocol);
+            val socket = clientSslContext.getSocketFactory().createSocket().asInstanceOf[OpenSSLSocket];
             socket.setReuseAddress(true);
             socket.setApplicationProtocols("h2/13", "h2", "http");
             socket.connect(SSLTestUtils.createSocketAddress());
             socket.getOutputStream().write(MESSAGE.getBytes(StandardCharsets.US_ASCII));
-            byte[] data = new byte[100];
-            int read = socket.getInputStream().read(data);
+            val data = new Array[Byte](100);
+            val read = socket.getInputStream().read(data);
 
             Assert.assertEquals(MESSAGE, new String(data, 0, read));
             Assert.assertEquals("server side", "h2", engineAtomicReference.get().getSelectedApplicationProtocol());
@@ -81,41 +82,44 @@ public class ALPNTest extends AbstractOpenSSLTest {
             socket.close();
             serverSocket.close();
             acceptThread.join();
+        } finally {
+            serverSocket.close()
         }
     }
 
     @Test
-    public void testALPNFailure() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def testALPNFailure() = {
         Assume.assumeTrue(OpenSSLEngine.isAlpnSupported());
         testALPNFailureBase("TLSv1.2");
     }
 
     @Test
-    public void testALPNFailureTLS13() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def testALPNFailureTLS13() = {
         Assume.assumeTrue(OpenSSLEngine.isAlpnSupported());
         Assume.assumeTrue(isTLS13Supported());
         testALPNFailureBase("TLSv1.3");
     }
 
-    private void testALPNFailureBase(String protocol) throws IOException, NoSuchAlgorithmException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl." + protocol);
-            final SSLContext clientSslContext = SSLTestUtils.createClientSSLContext("openssl." + protocol);
-            final AtomicReference<OpenSSLEngine> engineAtomicReference = new AtomicReference<>();
-            Thread acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
-                OpenSSLEngine openSSLEngine = (OpenSSLEngine) engine;
+    def testALPNFailureBase(protocol: String) = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext("openssl." + protocol);
+            val clientSslContext = SSLTestUtils.createClientSSLContext("openssl." + protocol);
+            val engineAtomicReference = new AtomicReference[OpenSSLEngine]();
+            val acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
+                val openSSLEngine = engine.asInstanceOf[OpenSSLEngine];
                 openSSLEngine.setApplicationProtocols("h2", "h2/13", "http");
                 engineAtomicReference.set(openSSLEngine);
-                return openSSLEngine;
+                openSSLEngine;
             })));
             acceptThread.start();
-            final OpenSSLSocket socket = (OpenSSLSocket) clientSslContext.getSocketFactory().createSocket();
+            val socket = clientSslContext.getSocketFactory().createSocket().asInstanceOf[OpenSSLSocket];
             socket.setReuseAddress(true);
             socket.connect(SSLTestUtils.createSocketAddress());
             socket.getOutputStream().write(MESSAGE.getBytes(StandardCharsets.US_ASCII));
-            byte[] data = new byte[100];
-            int read = socket.getInputStream().read(data);
+            val data = new Array[Byte](100);
+            val read = socket.getInputStream().read(data);
 
             Assert.assertEquals(MESSAGE, new String(data, 0, read));
             Assert.assertNull("server side", engineAtomicReference.get().getSelectedApplicationProtocol());
@@ -126,6 +130,8 @@ public class ALPNTest extends AbstractOpenSSLTest {
             socket.close();
             serverSocket.close();
             acceptThread.join();
+        } finally {
+            serverSocket.close()
         }
     }
 }
