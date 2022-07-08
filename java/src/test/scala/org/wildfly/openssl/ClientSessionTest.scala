@@ -19,7 +19,7 @@
 
 package org.wildfly.openssl;
 
-import static org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
+import org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -27,53 +27,53 @@ import org.junit.Test;
 /**
  * @author <a href="mailto:jperkins@redhat.com">James R. Perkins</a>
  */
-public class ClientSessionTest extends ClientSessionTestBase {
+class ClientSessionTest extends ClientSessionTestBase {
 
     @Test
-    public void testOpenSsl() throws Exception {
+    def testOpenSsl() = {
         testSessionId(SSLTestUtils.createSSLContext("openssl.TLSv1.2"), "openssl.TLSv1.2");
     }
 
     @Test
-    public void testSessionTimeoutOpenSsl() throws Exception {
+    def testSessionTimeoutOpenSsl() = {
         testSessionTimeout("openssl.TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void testSessionTimeoutOpenSslTLS13() throws Exception {
+    def testSessionTimeoutOpenSslTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testSessionTimeoutTLS13("openssl.TLSv1.3", "openssl.TLSv1.3");
     }
 
     @Test
-    public void testSessionInvalidationOpenSsl() throws Exception {
+    def testSessionInvalidationOpenSsl() = {
         testSessionInvalidation("openssl.TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void testSessionInvalidationOpenSslTLS13() throws Exception {
+    def testSessionInvalidationOpenSslTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testSessionInvalidationTLS13("openssl.TLSv1.3", "openssl.TLSv1.3");
     }
 
     @Test
-    public void testSessionSizeOpenSsl() throws Exception {
+    def testSessionSizeOpenSsl() = {
         testSessionSize("openssl.TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void testSessionSizeOpenSslTLS13() throws Exception {
+    def testSessionSizeOpenSslTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testSessionSizeTLS13("openssl.TLSv1.3", "openssl.TLSv1.3");
     }
 
     @Test
-    public void testClientSessionInvalidationMultiThreadAccessOpenSsl() throws Exception {
+    def testClientSessionInvalidationMultiThreadAccessOpenSsl() = {
         testClientSessionInvalidationMultiThreadAccess("openssl.TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void testClientSessionInvalidationMultiThreadAccessOpenSslTLS13() throws Exception {
+    def testClientSessionInvalidationMultiThreadAccessOpenSslTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testClientSessionInvalidationMultiThreadAccess("openssl.TLSv1.3", "openssl.TLSv1.3");
     }
