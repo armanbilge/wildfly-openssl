@@ -17,7 +17,7 @@
 
 package org.wildfly.openssl;
 
-import static org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
+import org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -34,36 +34,42 @@ import org.junit.Test;
 /**
  * @author Stuart Douglas
  */
-public class ClientCertTest extends AbstractOpenSSLTest {
+class ClientCertTest extends AbstractOpenSSLTest {
 
-    public static final String MESSAGE = "Hello World";
+    val MESSAGE = "Hello World";
 
     @Test
-    public void jsseClientCertTest() throws IOException, NoSuchAlgorithmException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl.TLSv1.2");
+    def jsseClientCertTest() = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext("openssl.TLSv1.2");
 
-            Thread acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
+            val acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
                 //engine.setNeedClientAuth(true);
-                return engine;
+                engine;
             })));
             acceptThread.start();
-            try (SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket()) {
+            val socket = SSLSocketFactory.getDefault().createSocket().asInstanceOf[SSLSocket]
+            try {
                 socket.setReuseAddress(true);
                 socket.connect(SSLTestUtils.createSocketAddress());
                 socket.getOutputStream().write(MESSAGE.getBytes(StandardCharsets.US_ASCII));
-                byte[] data = new byte[100];
-                int read = socket.getInputStream().read(data);
+                val data = new Array[Byte](100);
+                val read = socket.getInputStream().read(data);
 
                 Assert.assertEquals(MESSAGE, new String(data, 0, read));
                 if (! isTLS13Supported()) {
                     Assert.assertArrayEquals(socket.getSession().getId(), sessionID.get());
                 }
+            } finally {
+                socket.close()
             }
 
             serverSocket.close();
             acceptThread.join();
+        } finally {
+            serverSocket.close()
         }
     }
 
