@@ -17,10 +17,10 @@
 
 package org.wildfly.openssl;
 
-import static org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
-import static org.wildfly.openssl.SSL.SSL_PROTO_SSLv2Hello;
-import static org.wildfly.openssl.SSLTestUtils.HOST;
-import static org.wildfly.openssl.SSLTestUtils.PORT;
+import org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
+import org.wildfly.openssl.SSL.SSL_PROTO_SSLv2Hello;
+import org.wildfly.openssl.SSLTestUtils.HOST;
+import org.wildfly.openssl.SSLTestUtils.PORT;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -46,47 +46,48 @@ import org.junit.Test;
 /**
  * @author Stuart Douglas
  */
-public class BasicOpenSSLEngineTest extends AbstractOpenSSLTest  {
+class BasicOpenSSLEngineTest extends AbstractOpenSSLTest  {
 
-    public static final String MESSAGE = "Hello World";
+    val MESSAGE = "Hello World";
 
     @Test
-    public void basicOpenSSLTest() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def basicOpenSSLTest() = {
         basicTest("openssl.TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void basicOpenSSLTestTLS13() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def basicOpenSSLTestTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         basicTest("openssl.TLSv1.3", "openssl.TLSv1.3");
     }
 
     @Test
-    public void basicOpenSSLTestInterop() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def basicOpenSSLTestInterop() = {
         basicTest("openssl.TLSv1.2", "TLSv1.2");
         basicTest("TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void basicOpenSSLTestInteropTLS13() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def basicOpenSSLTestInteropTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         basicTest("openssl.TLSv1.3", "TLSv1.3");
         basicTest("TLSv1.3", "openssl.TLSv1.3");
     }
 
-    private void basicTest(String serverProvider, String clientProvider) throws IOException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext(serverProvider);
+    private def basicTest(serverProvider: String, clientProvider: String) = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext(serverProvider);
 
-            Thread acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID));
+            val acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID));
             acceptThread.start();
-            final SSLSocket socket = (SSLSocket) SSLTestUtils.createClientSSLContext(clientProvider).getSocketFactory().createSocket();
+            val socket = SSLTestUtils.createClientSSLContext(clientProvider).getSocketFactory().createSocket().asInstanceOf[SSLSocket];
             socket.setReuseAddress(true);
             socket.connect(SSLTestUtils.createSocketAddress());
             socket.getOutputStream().write(MESSAGE.getBytes(StandardCharsets.US_ASCII));
-            byte[] data = new byte[100];
-            int read = socket.getInputStream().read(data);
+            val data = new Array[Byte](100);
+            val read = socket.getInputStream().read(data);
 
             Assert.assertEquals(MESSAGE, new String(data, 0, read));
             if (! isTLS13Supported()) {
@@ -101,34 +102,37 @@ public class BasicOpenSSLEngineTest extends AbstractOpenSSLTest  {
             socket.close();
             serverSocket.close();
             acceptThread.join();
+        } finally {
+            serverSocket.close()
         }
     }
 
     @Test
-    public void testNoExplicitEnabledProtocols() throws IOException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl.TLS");
-            final AtomicReference<SSLEngine> engineRef = new AtomicReference<>();
+    def testNoExplicitEnabledProtocols() = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext("openssl.TLS");
+            val engineRef = new AtomicReference[SSLEngine]();
 
-            EchoRunnable echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
+            val echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
                 engineRef.set(engine);
                 try {
-                    return engine;
-                } catch (Exception e) {
+                    engine;
+                } catch { case e: Exception =>
                     throw new RuntimeException(e);
                 }
             }));
-            Thread acceptThread = new Thread(echo);
+            val acceptThread = new Thread(echo);
             acceptThread.start();
-            final SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
+            val socket = SSLSocketFactory.getDefault().createSocket().asInstanceOf[SSLSocket];
             socket.setReuseAddress(true);
             socket.connect(SSLTestUtils.createSocketAddress());
             socket.getOutputStream().write(MESSAGE.getBytes(StandardCharsets.US_ASCII));
-            byte[] data = new byte[100];
-            int read = socket.getInputStream().read(data);
-            SSLEngine sslEngine = engineRef.get();
-            SSLSession session = sslEngine.getSession();
+            val data = new Array[Byte](100);
+            val read = socket.getInputStream().read(data);
+            val sslEngine = engineRef.get();
+            val session = sslEngine.getSession();
 
             Assert.assertEquals(MESSAGE, new String(data, 0, read));
             if (! isTLS13Supported()) {
@@ -144,46 +148,49 @@ public class BasicOpenSSLEngineTest extends AbstractOpenSSLTest  {
             socket.close();
             serverSocket.close();
             acceptThread.join();
+        } finally {
+            serverSocket.close()
         }
     }
 
     @Test
-    public void testSingleEnabledProtocol() throws IOException, InterruptedException {
+   def testSingleEnabledProtocol() = {
         testSingleEnabledProtocolBase("TLSv1.2");
     }
 
     @Test
-    public void testSingleEnabledProtocolTLS13() throws IOException, InterruptedException {
+    def testSingleEnabledProtocolTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testSingleEnabledProtocolBase("TLSv1.3");
     }
 
-    private void testSingleEnabledProtocolBase(String protocol) throws IOException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl.TLS");
-            final AtomicReference<SSLEngine> engineRef = new AtomicReference<>();
+    def testSingleEnabledProtocolBase(protocol: String) = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext("openssl.TLS");
+            val engineRef = new AtomicReference[SSLEngine]();
 
-            EchoRunnable echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
+            val echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
                 engineRef.set(engine);
                 try {
-                    engine.setEnabledProtocols(new String[]{ protocol }); // only one protocol enabled on server side
-                    return engine;
-                } catch (Exception e) {
+                    engine.setEnabledProtocols(Array(protocol)); // only one protocol enabled on server side
+                    engine;
+                } catch { case e: Exception =>
                     throw new RuntimeException(e);
                 }
             }));
-            Thread acceptThread = new Thread(echo);
+            val acceptThread = new Thread(echo);
             acceptThread.start();
-            final SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
+            val socket = SSLSocketFactory.getDefault().createSocket().asInstanceOf[SSLSocket];
             socket.setReuseAddress(true);
             socket.connect(SSLTestUtils.createSocketAddress());
             socket.getOutputStream().write(MESSAGE.getBytes(StandardCharsets.US_ASCII));
-            byte[] data = new byte[100];
-            int read = socket.getInputStream().read(data);
+            val data = new Array[Byte](100)
+            val read = socket.getInputStream().read(data);
 
             Assert.assertEquals(MESSAGE, new String(data, 0, read));
-            SSLSession session = engineRef.get().getSession();
+            val session = engineRef.get().getSession();
             Assert.assertNotNull(session);
             if (! protocol.equals("TLSv1.3")) {
                 Assert.assertArrayEquals(socket.getSession().getId(), sessionID.get());
@@ -191,65 +198,67 @@ public class BasicOpenSSLEngineTest extends AbstractOpenSSLTest  {
             }
             Assert.assertEquals(protocol, socket.getSession().getProtocol());
             Assert.assertEquals(protocol.equals("TLSv1.3"), CipherSuiteConverter.isTLSv13CipherSuite(socket.getSession().getCipherSuite()));
-            Assert.assertArrayEquals(new String[]{ SSL_PROTO_SSLv2Hello, protocol }, engineRef.get().getEnabledProtocols());
+            Assert.assertArrayEquals(Array[Object](SSL_PROTO_SSLv2Hello, protocol), engineRef.get().getEnabledProtocols().asInstanceOf[Array[Object]]);
             socket.getSession().invalidate();
             socket.close();
             serverSocket.close();
             acceptThread.join();
+        } finally {
+            serverSocket.close()
         }
     }
 
     @Test
-    public void testNoTLS13CipherSuitesEnabled() throws IOException, InterruptedException {
+    def testNoTLS13CipherSuitesEnabled() = {
         Assume.assumeTrue(isTLS13Supported());
-        testEnabledCipherSuites(new String[] { "ALL" }, false); // only enable TLS v1.2 cipher suites
+        testEnabledCipherSuites(Array("ALL"), false); // only enable TLS v1.2 cipher suites
     }
 
     @Test
-    public void testBothTLS12AndTLS13CipherSuitesEnabled() throws IOException, InterruptedException {
+    def testBothTLS12AndTLS13CipherSuitesEnabled() = {
         Assume.assumeTrue(isTLS13Supported());
-        testEnabledCipherSuites(new String[] { "TLS_AES_128_GCM_SHA256", "ALL" }, true);
+        testEnabledCipherSuites(Array("TLS_AES_128_GCM_SHA256", "ALL"), true);
     }
 
     @Test
-    public void testTLS13CipherSuiteEnabled() throws IOException, InterruptedException {
+    def testTLS13CipherSuiteEnabled() = {
         Assume.assumeTrue(isTLS13Supported());
-        testEnabledCipherSuites(new String[] { "TLS_AES_128_GCM_SHA256" }, true);
+        testEnabledCipherSuites(Array("TLS_AES_128_GCM_SHA256"), true);
     }
 
     @Test
-    public void testTLS13UsedByDefault() throws IOException, InterruptedException {
+    def testTLS13UsedByDefault() = {
         Assume.assumeTrue(isTLS13Supported());
-        testEnabledCipherSuites(new String[] { "TLS_AES_128_GCM_SHA256" }, true);
+        testEnabledCipherSuites(Array("TLS_AES_128_GCM_SHA256"), true);
     }
 
+    private def testEnabledCipherSuites(cipherSuites: Array[String], tls13Expected: Boolean) = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext("openssl.TLS");
+            val engineRef = new AtomicReference[SSLEngine]();
 
-    private void testEnabledCipherSuites(String[] cipherSuites, boolean tls13Expected) throws IOException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl.TLS");
-            final AtomicReference<SSLEngine> engineRef = new AtomicReference<>();
-
-            EchoRunnable echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
+            val echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
                 engineRef.set(engine);
                 try {
                     if (! tls13Expected) {
-                        engine.setEnabledProtocols(new String[]{ "TLSv1.2"});
+                        engine.setEnabledProtocols(Array("TLSv1.2"));
                     }
                     engine.setEnabledCipherSuites(cipherSuites);
-                    return engine;
-                } catch (Exception e) {
+                    engine;
+                } catch { case e: Exception =>
                     throw new RuntimeException(e);
                 }
             }));
-            Thread acceptThread = new Thread(echo);
+            val acceptThread = new Thread(echo);
             acceptThread.start();
-            final SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
+            val socket = SSLSocketFactory.getDefault().createSocket().asInstanceOf[SSLSocket];
             socket.setReuseAddress(true);
             socket.connect(SSLTestUtils.createSocketAddress());
             socket.getOutputStream().write(MESSAGE.getBytes(StandardCharsets.US_ASCII));
-            byte[] data = new byte[100];
-            int read = socket.getInputStream().read(data);
+            val data = new Array[Byte](100);
+            val read = socket.getInputStream().read(data);
 
             Assert.assertEquals(MESSAGE, new String(data, 0, read));
             if (! tls13Expected) {
@@ -259,74 +268,80 @@ public class BasicOpenSSLEngineTest extends AbstractOpenSSLTest  {
             } else {
                 Assert.assertEquals("TLSv1.3", socket.getSession().getProtocol());
                 Assert.assertEquals(true, CipherSuiteConverter.isTLSv13CipherSuite(socket.getSession().getCipherSuite()));
-                Assert.assertEquals(cipherSuites[0], socket.getSession().getCipherSuite());
+                Assert.assertEquals(cipherSuites(0), socket.getSession().getCipherSuite());
             }
 
             socket.getSession().invalidate();
             socket.close();
             serverSocket.close();
             acceptThread.join();
+        } finally {
+            serverSocket.close()
         }
     }
 
     @Test
-    public void testWrongClientSideTrustManagerFailsValidation() throws IOException, NoSuchAlgorithmException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl.TLSv1.2");
+    def testWrongClientSideTrustManagerFailsValidation() = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext("openssl.TLSv1.2");
 
-            Thread acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID));
+            val acceptThread = new Thread(new EchoRunnable(serverSocket, sslContext, sessionID));
             acceptThread.start();
-            final SSLSocket socket = (SSLSocket) SSLTestUtils.createSSLContext("openssl.TLSv1.2").getSocketFactory().createSocket();
+            val socket = SSLTestUtils.createSSLContext("openssl.TLSv1.2").getSocketFactory().createSocket().asInstanceOf[SSLSocket]
             socket.setReuseAddress(true);
             socket.setSSLParameters(socket.getSSLParameters());
             socket.connect(SSLTestUtils.createSocketAddress());
             try {
                 socket.getOutputStream().write(MESSAGE.getBytes(StandardCharsets.US_ASCII));
                 Assert.fail("Expected SSLException not thrown");
-            } catch (SSLException expected) {
+            } catch { case _: SSLException =>
                 socket.close();
                 serverSocket.close();
                 acceptThread.join();
             }
+        } finally {
+            serverSocket.close()
         }
     }
 
 
     @Test
-    public void openSslLotsOfDataTest() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def openSslLotsOfDataTest() = {
         openSslLotsOfDataTestBase("TLSv1.2");
     }
 
     @Test
-    public void openSslLotsOfDataTestTLS13() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    def openSslLotsOfDataTestTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         openSslLotsOfDataTestBase("TLSv1.3");
     }
 
-    private void openSslLotsOfDataTestBase(String protocol) throws IOException, NoSuchAlgorithmException, InterruptedException {
-        try (ServerSocket serverSocket = SSLTestUtils.createServerSocket()) {
-            final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-            final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl.TLS");
+    private def openSslLotsOfDataTestBase(protocol: String) = {
+        val serverSocket = SSLTestUtils.createServerSocket()
+        try {
+            val sessionID = new AtomicReference[Array[Byte]]();
+            val sslContext = SSLTestUtils.createSSLContext("openssl.TLS");
 
-            final AtomicReference<SSLEngine> engineRef = new AtomicReference<>();
-            EchoRunnable target = new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
+            val engineRef = new AtomicReference[SSLEngine]();
+            val target = new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
                 engineRef.set(engine);
                 try {
-                    engine.setEnabledProtocols(new String[]{ protocol }); // only one protocol enabled on server side
-                    return engine;
-                } catch (Exception e) {
+                    engine.setEnabledProtocols(Array(protocol)); // only one protocol enabled on server side
+                    engine;
+                } catch { case e: Exception =>
                     throw new RuntimeException(e);
                 }
             }));
-            Thread acceptThread = new Thread(target);
+            val acceptThread = new Thread(target);
             acceptThread.start();
-            final SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
+            val socket = SSLSocketFactory.getDefault().createSocket().asInstanceOf[SSLSocket];
             socket.setReuseAddress(true);
             socket.connect(SSLTestUtils.createSocketAddress());
-            String message = generateMessage(1000);
+            val message = generateMessage(1000);
             socket.getOutputStream().write(message.getBytes(StandardCharsets.US_ASCII));
-            socket.getOutputStream().write(new byte[]{0});
+            socket.getOutputStream().write(Array[Byte](0));
 
             Assert.assertEquals(message, new String(SSLTestUtils.readData(socket.getInputStream())));
             if (! isTLS13Supported()) {
@@ -337,59 +352,61 @@ public class BasicOpenSSLEngineTest extends AbstractOpenSSLTest  {
             socket.close();
             serverSocket.close();
             acceptThread.join();
+        } finally {
+            serverSocket.close()
         }
     }
 
     @Test
-    public void testTwoWay() throws Exception {
+    def testTwoWay() = {
         performTestTwoWay("openssl.TLSv1.2", "openssl.TLSv1.2", "TLSv1.2");
     }
 
     @Test
-    public void testTwoWayTLS13() throws Exception {
+    def testTwoWayTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         performTestTwoWay("openssl.TLSv1.3", "openssl.TLSv1.3", "TLSv1.3");
     }
 
     @Test
-    public void testTwoWayInterop() throws Exception {
+    def testTwoWayInterop() = {
         performTestTwoWay("openssl.TLSv1.2", "TLSv1.2", "TLSv1.2"); // openssl server
         performTestTwoWay("TLSv1.2", "openssl.TLSv1.2", "TLSv1.2"); // openssl client
     }
 
     @Test
-    public void testTwoWayInteropTLS13() throws Exception {
+    def testTwoWayInteropTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         performTestTwoWay("openssl.TLSv1.3", "TLSv1.3", "TLSv1.3"); // openssl server
         performTestTwoWay("TLSv1.3", "openssl.TLSv1.3", "TLSv1.3"); // openssl client
     }
 
-    private void performTestTwoWay(String serverProvider, String clientProvider, String protocol) throws Exception {
-        final SSLContext serverContext = SSLTestUtils.createSSLContext(serverProvider);
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        Future<SSLSocket> socketFuture = executorService.submit(() -> {
+    private def performTestTwoWay(serverProvider: String, clientProvider: String, protocol: String) = {
+        val serverContext = SSLTestUtils.createSSLContext(serverProvider);
+        val executorService = Executors.newSingleThreadExecutor();
+        val socketFuture = executorService.submit(() => {
             try {
-                SSLContext clientContext = SSLTestUtils.createClientSSLContext(clientProvider);
-                SSLSocket sslSocket = (SSLSocket) clientContext.getSocketFactory().createSocket(HOST, PORT);
+                val clientContext = SSLTestUtils.createClientSSLContext(clientProvider);
+                val sslSocket = clientContext.getSocketFactory().createSocket(HOST, PORT).asInstanceOf[SSLSocket];
                 sslSocket.setReuseAddress(true);
                 sslSocket.getSession();
-                return sslSocket;
-            } catch (Exception e) {
+                sslSocket;
+            } catch { case e: Exception =>
                 throw new RuntimeException(e);
             }
         });
 
-        SSLServerSocket sslServerSocket = (SSLServerSocket) serverContext.getServerSocketFactory().createServerSocket(PORT, 10, InetAddress.getByName(HOST));
+        val sslServerSocket = serverContext.getServerSocketFactory().createServerSocket(PORT, 10, InetAddress.getByName(HOST)).asInstanceOf[SSLServerSocket];
         sslServerSocket.setNeedClientAuth(true);
-        SSLSocket serverSocket = (SSLSocket) sslServerSocket.accept();
-        SSLSession serverSession = serverSocket.getSession();
-        SSLSocket clientSocket = socketFuture.get();
-        SSLSession clientSession = clientSocket.getSession();
+        val serverSocket = sslServerSocket.accept().asInstanceOf[SSLSocket];
+        val serverSession = serverSocket.getSession();
+        val clientSocket = socketFuture.get();
+        val clientSession = clientSocket.getSession();
 
         try {
-            String expectedProtocol;
+            var expectedProtocol: String = null
             if (protocol.equals("TLS")) {
-                expectedProtocol = isTLS13Supported() ? "TLSv1.3" : "TLSv1.2";
+                expectedProtocol = if (isTLS13Supported()) "TLSv1.3" else "TLSv1.2";
             } else {
                 expectedProtocol = protocol;
             }
@@ -407,9 +424,9 @@ public class BasicOpenSSLEngineTest extends AbstractOpenSSLTest  {
     }
 
 
-    private static String generateMessage(int repetitions) {
-        final StringBuilder builder = new StringBuilder(repetitions * MESSAGE.length());
-        for (int i = 0; i < repetitions; ++i) {
+    private def generateMessage(repetitions: Int): String = {
+        val builder = new StringBuilder(repetitions * MESSAGE.length());
+        for (i <- 0 until repetitions) {
             builder.append(MESSAGE);
         }
         return builder.toString();
