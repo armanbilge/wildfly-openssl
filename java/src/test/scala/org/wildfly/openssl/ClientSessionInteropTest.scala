@@ -19,7 +19,7 @@
 
 package org.wildfly.openssl;
 
-import static org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
+import org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -28,42 +28,42 @@ import org.junit.Test;
  * @author <a href="mailto:jperkins@redhat.com">James R. Perkins</a>
  * @author <a href="mailto:fjuma@redhat.com">Farah Juma</a>
  */
-public class ClientSessionInteropTest extends ClientSessionTestBase {
+class ClientSessionInteropTest extends ClientSessionTestBase {
 
     @Test
-    public void testJsse() throws Exception {
+    def testJsse() = {
         testSessionId(SSLTestUtils.createSSLContext("TLSv1.2"), "openssl.TLSv1.2");
     }
 
     @Test
-    public void testSessionTimeoutJsse() throws Exception {
+    def testSessionTimeoutJsse() = {
         testSessionTimeout("TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void testSessionTimeoutJsseTLS13() throws Exception {
+    def testSessionTimeoutJsseTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testSessionTimeoutTLS13("TLSv1.3", "openssl.TLSv1.3");
     }
 
     @Test
-    public void testSessionInvalidationJsse() throws Exception {
+    def testSessionInvalidationJsse() = {
         testSessionInvalidation("TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void testSessionInvalidationJsseTLS13() throws Exception {
+    def testSessionInvalidationJsseTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testSessionInvalidationTLS13("TLSv1.3", "openssl.TLSv1.3");
     }
 
     @Test
-    public void testSessionSizeJsse() throws Exception {
+    def testSessionSizeJsse() = {
         testSessionSize("TLSv1.2", "openssl.TLSv1.2");
     }
 
     @Test
-    public void testSessionSizeJsseTLS13() throws Exception {
+    def testSessionSizeJsseTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testSessionSizeTLS13("TLSv1.3", "openssl.TLSv1.3");
     }
@@ -72,15 +72,15 @@ public class ClientSessionInteropTest extends ClientSessionTestBase {
      * Tests that invalidation of a client session, for whatever reason, when multiple threads
      * are involved in interacting with the server through a SSL socket, doesn't lead to a JVM crash
      *
-     * @throws Exception
+     * @=
      */
     @Test
-    public void testClientSessionInvalidationMultiThreadAccessJsse() throws Exception {
+    def testClientSessionInvalidationMultiThreadAccessJsse() = {
         testClientSessionInvalidationMultiThreadAccess("TLSv1.2", "openssl." + "TLSv1.2");
     }
 
     @Test
-    public void testClientSessionInvalidationMultiThreadAccessJsseTLS13() throws Exception {
+    def testClientSessionInvalidationMultiThreadAccessJsseTLS13() = {
         Assume.assumeTrue(isTLS13Supported());
         testClientSessionInvalidationMultiThreadAccess("TLSv1.3" , "openssl.TLSv1.3");
     }
