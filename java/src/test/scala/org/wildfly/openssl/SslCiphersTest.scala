@@ -17,7 +17,7 @@
 
 package org.wildfly.openssl;
 
-import static org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
+import org.wildfly.openssl.OpenSSLEngine.isTLS13Supported;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -34,78 +34,79 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+object SslCiphersTest {
+    @BeforeClass
+    def setup() = {
+        OpenSSLProvider.register();
+    }
+}
+
 /**
  * @author Stuart Douglas
  */
-public class SslCiphersTest extends AbstractOpenSSLTest {
-
-    @BeforeClass
-    public static void setup() {
-        OpenSSLProvider.register();
-    }
+class SslCiphersTest extends AbstractOpenSSLTest {
 
     @Test
-    public void testCipherSuiteConverter() throws IOException {
+    def testCipherSuiteConverter() = {
 
-        final SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
+        val socket = SSLSocketFactory.getDefault().createSocket().asInstanceOf[SSLSocket];
         socket.setReuseAddress(true);
-        for (String cipher : socket.getSupportedCipherSuites()) {
-            if (cipher.contains("EMPTY")) {
-                continue;
+        socket.getSupportedCipherSuites().foreach { cipher =>
+            if (!cipher.contains("EMPTY")) {
+                val openSslCipherSuite = CipherSuiteConverter.toOpenSsl(cipher);
+                Assert.assertNotNull(cipher, openSslCipherSuite);
+                Assert.assertEquals(cipher, CipherSuiteConverter.toJava(openSslCipherSuite, cipher.substring(0, 3)));
             }
-            String openSslCipherSuite = CipherSuiteConverter.toOpenSsl(cipher);
-            Assert.assertNotNull(cipher, openSslCipherSuite);
-            Assert.assertEquals(cipher, CipherSuiteConverter.toJava(openSslCipherSuite, cipher.substring(0, 3)));
         }
         socket.close();
     }
 
     @Test
-    public void testAvailableProtocols() throws Exception {
-        final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-        final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl.TLSv1.2");
+    def testAvailableProtocols() {
+        val sessionID = new AtomicReference[Array[Byte]]();
+        val sslContext = SSLTestUtils.createSSLContext("openssl.TLSv1.2");
 
         //we only test a subset of ciphers
         //TODO: figure out which ones we need to support, and what sort of cert we need for each
-        String[] suites = new String[]{
+        val suites = Array(
                 //"TLS_RSA_WITH_AES_256_CBC_SHA256",
                 "TLS_RSA_WITH_AES_128_CBC_SHA256",
                 "TLS_RSA_WITH_AES_128_GCM_SHA256",
                 //"TLS_RSA_WITH_AES_256_GCM_SHA384",
                 "TLS_RSA_WITH_AES_128_CBC_SHA",
                 //"TLS_RSA_WITH_AES_256_CBC_SHA"
-        };
+        );
 
-        for (String suite : suites) {
+        suites.foreach { suite =>
 
-            final AtomicReference<SSLEngine> engineRef = new AtomicReference<>();
+            val engineRef = new AtomicReference[SSLEngine]();
 
-            ServerSocket serverSocket = SSLTestUtils.createServerSocket();
-            EchoRunnable echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
+            val serverSocket = SSLTestUtils.createServerSocket();
+            val echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
                 engineRef.set(engine);
                 try {
-                    engine.setEnabledCipherSuites(new String[]{suite});
-                    return engine;
-                } catch (Exception e) {
+                    engine.setEnabledCipherSuites(Array(suite));
+                    engine;
+                } catch { case e: Exception =>
                     throw new RuntimeException(e);
                 }
             }));
-            Thread acceptThread = new Thread(echo);
+            val acceptThread = new Thread(echo);
             acceptThread.start();
 
-            final SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
+            val socket = SSLSocketFactory.getDefault().createSocket().asInstanceOf[SSLSocket];
             socket.setReuseAddress(true);
-            socket.setEnabledCipherSuites(new String[]{suite});
+            socket.setEnabledCipherSuites(Array(suite));
             socket.connect(SSLTestUtils.createSocketAddress());
             socket.getOutputStream().write("hello world".getBytes(StandardCharsets.US_ASCII));
-            byte[] data = new byte[100];
-            int read = socket.getInputStream().read(data);
+            val data = new Array[Byte](100);
+            val read = socket.getInputStream().read(data);
 
             Assert.assertEquals("hello world", new String(data, 0, read));
             //make sure the names match
-            String cipherSuite = socket.getSession().getCipherSuite();
-            SSLEngine sslEngine = engineRef.get();
-            SSLSession session = sslEngine.getSession();
+            var cipherSuite = socket.getSession().getCipherSuite();
+            val sslEngine = engineRef.get();
+            val session = sslEngine.getSession();
             // SSL is an alias for TLS, Windows and IBM J9 seem to use SSL for simplicity we'll just replace SSL with
             // TLS to match what we're expecting
             if(cipherSuite.startsWith("SSL")) {
@@ -123,51 +124,51 @@ public class SslCiphersTest extends AbstractOpenSSLTest {
     }
 
     @Test
-    public void testAvailableProtocolsWithTLS13CipherSuites() throws Exception {
+    def testAvailableProtocolsWithTLS13CipherSuites() = {
         Assume.assumeTrue(isTLS13Supported());
-        final AtomicReference<byte[]> sessionID = new AtomicReference<>();
-        final SSLContext sslContext = SSLTestUtils.createSSLContext("openssl.TLSv1.3");
+        val sessionID = new AtomicReference[Array[Byte]]();
+        val sslContext = SSLTestUtils.createSSLContext("openssl.TLSv1.3");
 
-        String[] suites = new String[]{
+        val suites = Array(
                 "TLS_AES_256_GCM_SHA384",
                 "TLS_CHACHA20_POLY1305_SHA256",
                 "TLS_AES_128_GCM_SHA256",
                 "TLS_AES_128_CCM_8_SHA256",
                 "TLS_AES_128_CCM_SHA256"
-        };
+        );
 
-        for (String suite : suites) {
+        suites.foreach { suite =>
 
-            final AtomicReference<SSLEngine> engineRef = new AtomicReference<>();
+            val engineRef = new AtomicReference[SSLEngine]();
 
-            ServerSocket serverSocket = SSLTestUtils.createServerSocket();
-            EchoRunnable echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine -> {
+            val serverSocket = SSLTestUtils.createServerSocket();
+            val echo = new EchoRunnable(serverSocket, sslContext, sessionID, (engine => {
                 engineRef.set(engine);
                 try {
-                    engine.setEnabledCipherSuites(new String[]{"TLS_RSA_WITH_AES_128_CBC_SHA256", suite});
-                    return engine;
-                } catch (Exception e) {
+                    engine.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_128_CBC_SHA256", suite));
+                    engine;
+                } catch { case e: Exception =>
                     throw new RuntimeException(e);
                 }
             }));
-            Thread acceptThread = new Thread(echo);
+            val acceptThread = new Thread(echo);
             acceptThread.start();
 
-            final SSLContext clientContext = SSLTestUtils.createClientSSLContext("openssl.TLSv1.3");
-            final SSLSocket socket = (SSLSocket) clientContext.getSocketFactory().createSocket();
+            val clientContext = SSLTestUtils.createClientSSLContext("openssl.TLSv1.3");
+            val socket = clientContext.getSocketFactory().createSocket().asInstanceOf[SSLSocket];
             socket.setReuseAddress(true);
-            socket.setEnabledCipherSuites(new String[]{"TLS_RSA_WITH_AES_128_CBC_SHA256", suite});
+            socket.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_128_CBC_SHA256", suite));
             socket.connect(SSLTestUtils.createSocketAddress());
             socket.getOutputStream().write("hello world".getBytes(StandardCharsets.US_ASCII));
-            byte[] data = new byte[100];
-            int read = socket.getInputStream().read(data);
+            val data = new Array[Byte](100);
+            val read = socket.getInputStream().read(data);
 
             Assert.assertEquals("hello world", new String(data, 0, read));
             //make sure the names match
-            String cipherSuite = socket.getSession().getCipherSuite();
-            String protocol = socket.getSession().getProtocol();
-            SSLEngine sslEngine = engineRef.get();
-            SSLSession session = sslEngine.getSession();
+            val cipherSuite = socket.getSession().getCipherSuite();
+            val protocol = socket.getSession().getProtocol();
+            val sslEngine = engineRef.get();
+            val session = sslEngine.getSession();
             Assert.assertEquals(session.getCipherSuite(), cipherSuite);
             Assert.assertEquals(session.getCipherSuite(), suite);
             Assert.assertEquals(session.getProtocol(), protocol);
